@@ -1,8 +1,8 @@
-module type Parser = sig 
+module type ParserSig = sig 
   val parse : string -> int;;
 end
 
-module Compiler: Parser = struct
+module Parser: ParserSig = struct
   type operations =
     | Sum 
     | Sub
@@ -29,6 +29,7 @@ module Compiler: Parser = struct
     (* ( *  +  -  / ) *)
     code = 42 || code = 43 || code = 45 || code = 47;;
 
+  (* converts a char code to a valid operator *)
   let get_operator_from_char (c: char) =
     match (Char.code c) with
     | 42 -> Multiply
@@ -37,6 +38,7 @@ module Compiler: Parser = struct
     | 47 -> Divid
     | _ -> err_not_operator;;
 
+  (* converts the operator to the function to be aplyed *)
   let get_fun_from_operator = function
     | Sum -> (+)
     | Sub -> (-)
@@ -48,9 +50,11 @@ module Compiler: Parser = struct
   (* if the ASCII code is between 48 and 57 it means it is a number between 0-9 *)
   let is_space (c: char) = Char.code c = 32;;
 
+  (* Verify if the char is a number *)
   let is_digit (c: char) =
     Char.code c >= 48 && Char.code c <= 57;;
 
+  (* converts the char to an int *)
   let get_digit_from_char (c: char) =
     Char.code c - 48;;
 
@@ -94,7 +98,7 @@ module Compiler: Parser = struct
         else if is_space c && token <> None then (remove_fs_str s, token)
         else 
           if is_operator c then
-            (* Creates a new Token with the digit *)
+            (* Creates a new Token with the operator *)
             let token = Operation (get_operator_from_char c) in
             (remove_fs_str s, token)
         else (s, token)
@@ -148,8 +152,62 @@ module Compiler: Parser = struct
     i;;
 end
 
-let () =
-  let s = read_line () in
-  let result = Compiler.parse s in
-  Printf.printf "Result: %d\n" result;;
+module type ReaderSig = sig
+  val read_file: string -> in_channel option
+end
 
+module Reader (P: ParserSig):  ReaderSig = struct
+  let valid_extension (name: string) =
+    let file_split = (String.split_on_char '.' name) in
+    let rec helper = function
+      | [] -> false 
+      | [x] -> x = "math"
+      | _ :: tl -> helper tl
+    in
+
+    helper file_split;;
+
+  let read_file (name: string) =
+    if (valid_extension name) then None
+    else 
+      Some (open_in name);;
+end
+
+module type CliSig = sig
+  val cli: unit -> unit
+end
+
+module Cli (R: ReaderSig): CliSig = struct
+  let file = ref "";;
+
+  let speclist: (string * Arg.spec * string) list = [];;
+
+  let usage = "math [filename]"
+
+  let cli () =
+    Arg.parse speclist (fun f -> file := f) usage;
+    if !file != "" then
+      let () = R.read_file !file |> ignore in
+      ()
+    else 
+      let () = Printf.printf "|> " in
+      let s = read_line () in
+      let result = Parser.parse s in
+      Printf.printf "Result: %d\n" result;;
+end
+
+
+module type RunSig = sig
+  val start: unit -> unit
+end
+
+module Run: RunSig = struct
+  module P = Parser;;
+  module R = Reader(P);;
+  module C = Cli(R);;
+
+  let start () = C.cli ();;
+end
+
+let () =
+  Run.start ();;
