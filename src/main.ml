@@ -109,16 +109,18 @@ module Parser: ParserSig = struct
   (* This function will just take the input s *)
   (* Convert it to tokens and calculate its value *)
   (* This returns an int, that its the main type used *)
-  let try_me (s: string) =
+  let evaluate (s: string) =
     let tokens = ref [] in
     let s = ref s in
 
     let rec helper (tokens: tokens list) (prev: int) (op: operations) =
       match tokens with
       | [] -> prev
+      | [Digit (n)] when op = None -> n
+      | [Operation (_)] -> failwith "Operator with number to operate"
       | x :: tl ->
         match (prev, op, x) with
-        | (0, None, Digit n) -> helper tl n op
+        | (_, None, Digit n) -> helper tl n op
         | (_, None, Operation(n)) -> helper tl prev n
         | (y, n, Digit(z)) -> helper tl ((get_fun_from_operator n) y z) None
         | _ -> failwith "You are trying to do something without operators or numbers!\nPlease check your expression!"
@@ -129,7 +131,10 @@ module Parser: ParserSig = struct
     let () = s := ss in
     let () = tokens := !tokens @ [token] in
 
-    let prev = ref 0 in
+    let prev = ref (match token with 
+      | Digit (n) -> n 
+      | _ -> 0
+    ) in
 
     while !s <> "" do
       let (ss, token) = get_operator !s in
@@ -148,15 +153,15 @@ module Parser: ParserSig = struct
     !prev;;
 
   let parse (s: string) =
-    let i = try_me s in
+    let i = evaluate s in
     i;;
 end
 
 module type ReaderSig = sig
-  val read_file: string -> in_channel option
+  val parse_file: string -> unit
 end
 
-module Reader (P: ParserSig):  ReaderSig = struct
+module Reader (P: ParserSig): ReaderSig = struct
   let valid_extension (name: string) =
     let file_split = (String.split_on_char '.' name) in
     let rec helper = function
@@ -167,10 +172,26 @@ module Reader (P: ParserSig):  ReaderSig = struct
 
     helper file_split;;
 
-  let read_file (name: string) =
-    if (valid_extension name) then None
+  let get_file (name: string) =
+    if not (valid_extension name) then None 
     else 
-      Some (open_in name);;
+      Some(open_in name);;
+
+  let parse_file (name_file: string) =
+    let file = match get_file name_file with
+    | None -> failwith "File not valid"
+    | Some v -> v in
+
+    try 
+      while true do
+        let line = input_line file in
+        P.parse line |> Printf.printf "Result: %d\n";
+      done;
+    with e ->
+      close_in file;
+      if e <> End_of_file then
+        raise e;;
+
 end
 
 module type CliSig = sig
@@ -187,13 +208,15 @@ module Cli (R: ReaderSig): CliSig = struct
   let cli () =
     Arg.parse speclist (fun f -> file := f) usage;
     if !file != "" then
-      let () = R.read_file !file |> ignore in
-      ()
+      R.parse_file !file
     else 
-      let () = Printf.printf "|> " in
-      let s = read_line () in
-      let result = Parser.parse s in
-      Printf.printf "Result: %d\n" result;;
+      let () = Printf.printf "Use (Cntr + C) to exit\n" in
+      while true do
+        let () = Printf.printf "|> " in
+        let s = read_line () in
+        let result = Parser.parse s in
+        Printf.printf "Result: %d\n" result 
+      done;;
 end
 
 
