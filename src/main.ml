@@ -47,10 +47,14 @@ module Parser: ParserSig = struct
     | Error s -> failwith (Printf.sprintf "Errors: %s\n" s)
     | _ -> failwith "Cannot convert None to Operator"
 
-  (* if the ASCII code is between 48 and 57 it means it is a number between 0-9 *)
-  let is_space (c: char) = Char.code c = 32;;
+  (* verify is the char is a space *)
+  let is_space (c: char) = Char.code c = Char.code ' ';;
+
+  (* (* verify is the char is the end of line *) *)
+  (* let is_endofline (c: char) = Char.code c = Char.code '\n';; *)
 
   (* Verify if the char is a number *)
+  (* if the ASCII code is between 48 and 57 it means it is a number between 0-9 *)
   let is_digit (c: char) =
     Char.code c >= 48 && Char.code c <= 57;;
 
@@ -123,7 +127,7 @@ module Parser: ParserSig = struct
         | (_, None, Digit n) -> helper tl n op
         | (_, None, Operation(n)) -> helper tl prev n
         | (y, n, Digit(z)) -> helper tl ((get_fun_from_operator n) y z) None
-        | _ -> failwith "You are trying to do something without operators or numbers!\nPlease check your expression!"
+        | _ -> failwith "You are trying to do something without operators or numbers! Check your expression!"
     in
 
 
@@ -182,10 +186,13 @@ module Reader (P: ParserSig): ReaderSig = struct
     | None -> failwith "File not valid"
     | Some v -> v in
 
+    let line_count = ref 1 in
+
     try 
       while true do
         let line = input_line file in
-        P.parse line |> Printf.printf "Result: %d\n";
+        P.parse line |> Printf.printf "%d Result: %d\n" !line_count;
+        incr line_count;
       done;
     with e ->
       close_in file;

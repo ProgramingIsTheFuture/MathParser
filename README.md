@@ -38,8 +38,10 @@ Result: 7
 If a file is passed, it will parse all the lines inside it 
 and give us an output about each one.
 
+Note: look at the `main.math` file.  
 File: `main.math`
 ```math
+# First comment
 5 + 10 + 1 / 4
 
 10 + 12
@@ -58,8 +60,10 @@ Result: 6
 This `Result: 0` is not supposed to appear, this should be fixed.
 
 ### To-do:
-  - [ ] Output specify the line of the file
+  - [x] Output specify the line of the file
+  - [ ] Comments support
   - [ ] Skip empty lines
+  - [ ] *terminal mode* Not crashing the program when a syntax error is made
   - [ ] No negative numbers yet
   - [ ] No decimal numbers
   - [ ] No priority (`PEDMAS` -- Parenthesis, Exponents, Divisions, Multiplications, Add, Subtractions)
