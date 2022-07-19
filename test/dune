@@ -1,2 +1,4 @@
-(test
- (name maths))
+(tests 
+ (names maths)
+ (libraries alcotest)
+ )
