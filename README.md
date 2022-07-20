@@ -60,6 +60,7 @@ Result: 6
 This `Result: 0` is not supposed to appear, this should be fixed.
 
 ### To-do:
+  - [ ] Separate parser and lexer into two modules
   - [x] Output specify the line of the file
   - [ ] Comments support
   - [ ] Skip empty lines

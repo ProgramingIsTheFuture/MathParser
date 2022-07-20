@@ -1,3 +1,162 @@
+module type LexerSig = sig
+  (* Line and Char number *)
+  type line = int * int
+
+  (* Algebric operators *)
+  type operations =
+    | Sum
+    | Sub
+    | Divid
+    | Multiply
+
+  type digit = 
+    | Int of int
+
+  type token =
+    | Digit of digit * line
+    | String of string * line
+    | QUOTE
+    (* | Letter of string *)
+    | Operation of operations * line
+    (* | Error of (string) *)
+    | Error of line
+
+   val lexit: string -> token list
+end
+
+module Lexer: LexerSig = struct
+  (* Line and Char number *)
+  type line = int * int
+
+  (* Algebric operators *)
+  type operations =
+    | Sum
+    | Sub
+    | Divid
+    | Multiply
+
+  type digit = 
+    | Int of int
+
+  type token =
+    | Digit of digit * line
+    | String of string * line
+    | QUOTE
+    (* | Letter of string *)
+    | Operation of operations * line
+    (* | Error of (string) *)
+    | Error of line
+   
+  let syntax_error (t: token) = 
+    match t with
+    | Error l -> failwith (Printf.sprintf "Syntax error on line: %d at position: %d" (fst l) (snd l)) |> ignore
+    | _ -> ();;
+
+  (* Remove the first char from the string *)
+  let remove_fs_str (s: string): string = String.sub s 1 (String.length s - 1);;
+
+  (* check if the char is an operator *)
+  let is_operator (c: char)=
+    let code = Char.code c in
+    (* ( *  +  -  / ) *)
+    code = 42 || code = 43 || code = 45 || code = 47;;
+
+  (* verify is the char is a space *)
+  let is_space (c: char) = Char.code c = Char.code ' ';;
+
+  (* verify is the char is a quote *)
+  let is_quote (c: char) = Char.code c = Char.code '"';;
+
+  (* verify is the char is the end of line *)
+  let is_endofline (c: char) = Char.code c = Char.code '\n';;
+
+  (* Verify if the char is a number *)
+  (* if the ASCII code is between 48 and 57 it means it is a number between 0-9 *)
+  let is_digit (c: char) =
+    Char.code c >= 48 && Char.code c <= 57;;
+
+  (* converts a char code to a valid operator *)
+  let get_operator_from_char (c: char) =
+    match (Char.code c) with
+    | 42 -> Some Multiply
+    | 43 -> Some Sum
+    | 45 -> Some Sub
+    | 47 -> Some Divid
+    | _ -> None
+
+  let get_fs_char (str: string): char = String.get str 0
+
+  (* converts the operator to the function to be aplyed *)
+  let get_fun_from_operator = function
+    | Sum -> (+)
+    | Sub -> (-)
+    | Divid -> (/)
+    | Multiply -> fun i j -> i * j
+
+      (* converts the char to an int *)
+  let get_digit_from_char (c: char) =
+    Char.code c - 48;;
+
+  let get_digit (line: int) (str: string ref): token =
+    let t = ref (Digit(Int(get_digit_from_char (get_fs_char !str)), (line, line))) in
+    let () = str := remove_fs_str !str in
+    if !str = "" then !t
+    else begin
+      while !str <> "" && is_digit (get_fs_char !str) do
+        let s = (get_fs_char !str) in 
+        let () = t := match !t with
+          | Digit(Int(x), l) -> Digit(Int(x*10 + (get_digit_from_char s)), l)
+          | _ -> failwith "" in
+        str := remove_fs_str !str;
+      done;
+      !t
+    end
+
+  (* Take char by char *)
+  (* Transform each one of them into tokens *)
+  let lex_line (string_to_lex: string): token list =
+    let str = ref string_to_lex in
+    let tokens: token list ref = ref [] in
+    let line = ref 1 in
+    while !str <> "" do
+      let tt = match get_fs_char !str with
+      | '\n' -> 
+        str := remove_fs_str !str;
+        incr line; 
+        None
+      | ' ' -> 
+        str := remove_fs_str !str; 
+        None
+      | x when is_operator x ->
+        let op = get_operator_from_char x in
+        begin
+        match op with
+        | Some v -> 
+          let ope = Some (Operation (v, (1, 2))) in
+          str := remove_fs_str !str;
+          Printf.printf "Operation";
+          ope
+        | None -> failwith "Operator is invalid!"
+        end
+      | x when is_digit x -> 
+          Some (get_digit !line str)
+      | _ -> failwith (Printf.sprintf "Not valid expression. Line: %d" !line) in
+      
+      match tt with
+      | Some v ->
+        tokens := !tokens @ [v];
+      | None -> ()
+    done;
+    !tokens;;
+
+
+  let lexit (file: string): token list =
+    let tokens: token list ref = ref [] in
+    tokens := ( file |> lex_line );
+    !tokens;;
+end
+
+
 module type ParserSig = sig 
   val parse : string -> int;;
 end
